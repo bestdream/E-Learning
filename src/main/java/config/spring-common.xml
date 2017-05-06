@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+       					http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+       					http://www.springframework.org/schema/context
+      			 		http://www.springframework.org/schema/context/spring-context-3.2.xsd
+      			 		http://www.springframework.org/schema/tx
+      		 			http://www.springframework.org/schema/tx/spring-tx-3.2.xsd
+      			 		http://www.springframework.org/schema/aop
+      			 		http://www.springframework.org/schema/aop/spring-aop-3.2.xsd
+      			 		http://www.springframework.org/schema/mvc
+           				http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd"
+           				default-lazy-init="true">
+      			 			
+    <!-- 添加注解扫描 以及扫描事件驱动 -->
+	<context:component-scan base-package="com.controller.*">
+		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+	</context:component-scan>
+	<mvc:annotation-driven />
+	
+	<!-- <bean class="com.common.Init" ></bean> -->
+	
+	<!-- 引入属性文件 -->  
+    <context:property-placeholder location="classpath*:config/jdbc.properties" />
+	
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+		<property name="driverClass" value="${jdbc.driver}"/>
+         <property name="jdbcUrl" value="${jdbc.url}"/>
+         <property name="user" value="${jdbc.username}"/>
+         <property name="password" value="${jdbc.password}"/>
+         <property name="autoCommitOnClose" value="true"/>
+         <property name="initialPoolSize" value="${cpool.minPoolSize}"/>
+         <property name="minPoolSize" value="${cpool.minPoolSize}"/>
+         <property name="maxPoolSize" value="${cpool.maxPoolSize}"/>
+         <property name="maxIdleTime" value="${cpool.maxIdleTime}"/>
+         <property name="checkoutTimeout" value="${cpool.checkoutTimeout}"/>
+	</bean>
+	
+	
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource"/>
+		<property name="packagesToScan">
+			<list>
+				<value>com.controller</value>
+			</list>
+		</property>
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">${hibernate.dialect}</prop>
+				<!-- 
+					对于oracl此为用户名;对于mysql此为数据库名
+					<prop key="hibernate.default_schema">default_schema</prop>
+					根据对象生成表结构
+					<prop key="hibernate.hbm2ddl.auto">update</prop>
+				 -->
+ 				<prop key="hibernate.hbm2ddl.auto">update</prop>
+				<!-- 是否显示sql -->
+				<prop key="hibernate.show_sql">true</prop>
+				<!-- 连接数据库时是否使用Unicode编码 -->
+				<prop key="hiberante.connection.useUnicode">true</prop> 
+				<!-- 连接数据库时数据的传输字符集编码方式 -->
+				<prop key="hiberante.connection.characterEncoding">UTF-8</prop>
+				<!-- 配置缓存 -->
+				<prop key="hibernate.cache.use_sencond_levl_cache">true</prop>
+				<prop key="hibernate.cache.use_query_cache">true</prop>
+				<!-- 指定缓存配置 -->
+				<prop key="hibernate.cache.region.factory_class">org.hibernate.cache.ehcache.EhCacheRegionFactory</prop>
+				<!-- 强制Hibernate以更人性化的格式将数据存入二级缓存 -->
+				<prop key="hibernate.cache.use_structured_entries">true</prop>
+				<!-- Hibernate将收集有助于性能调节的统计数据 -->
+				<prop key="hibernate.generate_statistics">true</prop>
+			</props>
+		</property>
+	</bean>
+	
+	<!-- 配置事务管理器 -->
+	<bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+	
+	<!-- 拦截器方式配置事物 -->
+	<tx:advice id="transactionAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="add*" />
+			<tx:method name="save*" />
+			<tx:method name="update*" />
+			<tx:method name="modify*" />
+			<tx:method name="edit*" />
+			<tx:method name="del*" />
+			<tx:method name="remove*" />
+			
+			<tx:method name="get*" propagation="SUPPORTS"/>
+			<tx:method name="find*" propagation="SUPPORTS"/>
+			<tx:method name="load*" propagation="SUPPORTS"/>
+			<tx:method name="tackedBaseInfo" propagation="SUPPORTS" read-only="true"/>
+			<tx:method name="search*" propagation="SUPPORTS"  read-only="true"/>
+			<tx:method name="*" />
+		</tx:attributes>
+	</tx:advice>
+	<!-- 事务切入点 -->
+	<aop:config>
+		<aop:pointcut expression="execution(* controller..*ServiceImpl.*(..))" id="transactionPointcut"/>
+		<aop:advisor pointcut-ref="transactionPointcut" advice-ref="transactionAdvice"/>
+	</aop:config>
+
+</beans>
